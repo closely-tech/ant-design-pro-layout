@@ -1,6 +1,6 @@
 import './BasicLayout.less';
 
-import React, { CSSProperties, useContext, useEffect } from 'react';
+import React, { useState, CSSProperties, useContext, useEffect } from 'react';
 import { BreadcrumbProps as AntdBreadcrumbProps } from 'antd/es/breadcrumb';
 import { Helmet } from 'react-helmet';
 import { Layout } from 'antd';
@@ -8,8 +8,8 @@ import classNames from 'classnames';
 import warning from 'warning';
 import useMergeValue from 'use-merge-value';
 import { stringify } from 'use-json-comparison';
-import useAntdMediaQuery from 'use-media-antd-query';
 
+import { useMediaQuery } from 'react-responsive';
 import Omit from 'omit.js';
 import Header, { HeaderViewProps } from './Header';
 import {
@@ -33,6 +33,47 @@ import { isBrowser, useDeepCompareEffect } from './utils/utils';
 import PageLoading from './PageLoading';
 import MenuCounter from './SiderMenu/Counter';
 import WrapContent from './WrapContent';
+
+const MediaQueryEnum = {
+  'screen-xs': {
+    maxWidth: 575,
+  },
+  'screen-sm': {
+    minWidth: 576,
+    maxWidth: 767,
+  },
+  'screen-md': {
+    minWidth: 768,
+    maxWidth: 991,
+  },
+  'screen-lg': {
+    minWidth: 992,
+    maxWidth: 1199,
+  },
+  'screen-xl': {
+    minWidth: 1200,
+    maxWidth: 1599,
+  },
+  'screen-xxl': {
+    minWidth: 1600,
+  },
+};
+
+/**
+ * loop query screen className
+ * Array.find will throw a error
+ * `Rendered more hooks than during the previous render.`
+ * So should use Array.forEach
+ */
+const getScreenClassName = () => {
+  let className = '';
+  Object.keys(MediaQueryEnum).forEach(key => {
+    if (useMediaQuery(MediaQueryEnum[key])) {
+      className = key;
+    }
+  });
+  return className;
+};
 
 export interface BasicLayoutProps
   extends Partial<RouterTypes<Route>>,
@@ -216,6 +257,17 @@ const BasicLayout: React.FC<BasicLayoutProps> = props => {
     ...rest
   } = props;
 
+  /**
+   * init variables
+   */
+  const [isMobile, setIsMobile] = useState<boolean>(
+    useMediaQuery({ maxWidth: 767 }, undefined, (match: boolean) => {
+      if (!props.disableMobile) {
+        setIsMobile(match);
+      }
+    }) && !props.disableMobile,
+  );
+
   const formatMessage = ({
     id,
     defaultMessage,
@@ -241,7 +293,6 @@ const BasicLayout: React.FC<BasicLayoutProps> = props => {
     return id;
   };
 
-  const colSize = useAntdMediaQuery();
   const { routes = [] } = route;
   const [menuInfoData, setMenuInfoData] = useMergeValue<{
     breadcrumb?: {
@@ -268,9 +319,6 @@ const BasicLayout: React.FC<BasicLayoutProps> = props => {
       menuDataRender,
     );
   }
-
-  const isMobile =
-    (colSize === 'sm' || colSize === 'xs') && !props.disableMobile;
 
   const { breadcrumb = {}, breadcrumbMap, menuData = [] } = !menuDataRender
     ? menuInfoData
@@ -372,11 +420,11 @@ const BasicLayout: React.FC<BasicLayoutProps> = props => {
 
   // gen className
   const className = classNames(
+    getScreenClassName(),
     props.className,
     'ant-design-pro',
     'ant-pro-basicLayout',
     {
-      [`screen-${colSize}`]: colSize,
       'ant-pro-basicLayout-topmenu': PropsLayout === 'topmenu',
       'ant-pro-basicLayout-is-children': isChildrenLayout,
       'ant-pro-basicLayout-fix-siderbar': fixSiderbar,
